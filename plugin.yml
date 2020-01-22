@@ -3,4 +3,4 @@ main: emretr1\rpsolution\Main
 version: 1.0
 api: 3.11.4
 author: EmreTr1
-description: A temporary solution for a client bug about loading high MB resource packs in PocketMine-MP
+description: A temporary solution for a client bug about loading large MB resource packs in PocketMine-MP
