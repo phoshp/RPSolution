@@ -44,7 +44,7 @@ class Main extends PluginBase implements Listener{
 				$player->close("", "disconnectionScreen.resourcePack", true);
 				$this->getServer()->getLogger()->debug("Got a resource pack chunk request for unknown pack with UUID " . $packet->packId . ", available packs: " . implode(", ", $manager->getPackIdList()));
 				
-				return false;
+				return;
 			}
 			
 			$pk = new ResourcePackChunkDataPacket();
