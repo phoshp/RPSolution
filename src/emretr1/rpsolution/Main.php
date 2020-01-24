@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace emretr1\rpsolution;
 
-use pocketmine\event\player\PlayerQuitEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\network\mcpe\protocol\ResourcePackChunkDataPacket;
@@ -18,7 +17,7 @@ use pocketmine\scheduler\ClosureTask;
 class Main extends PluginBase implements Listener{
 	/** @var PackSendEntry[] */
 	public static $packSendQueue = [];
-
+	
 	public function onEnable(){
 		$this->getServer()->getPluginManager()->registerEvents($this, $this);
 		$this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function (int $currentTick) : void{
@@ -26,10 +25,6 @@ class Main extends PluginBase implements Listener{
 				$entry->tick();
 			}
 		}), 0);
-	}
-	
-	public function onQuit(PlayerQuitEvent $event){
-		unset(self::$packSendQueue[$event->getPlayer()->getLowerCaseName()]);
 	}
 	
 	public function onPacketReceive(DataPacketReceiveEvent $event){
@@ -67,7 +62,7 @@ class Main extends PluginBase implements Listener{
 class PackSendEntry{
 	/** @var DataPacket[] */
 	protected $packets = [];
-	/** @var int */
+	/** @var float */
 	protected $lastPacketSendTime = 0;
 	/** @var int */
 	protected $sendInterval = 1;
@@ -83,19 +78,17 @@ class PackSendEntry{
 	}
 	
 	public function tick() : void{
-		if((time() - $this->lastPacketSendTime) >= $this->sendInterval){
+		if(!$this->player->isConnected()){
+			unset(Main::$packSendQueue[$this->player->getLowerCaseName()]);
+			return;
+		}
+		
+		if((microtime(true) - $this->lastPacketSendTime) >= $this->sendInterval){
 			if($next = array_shift($this->packets)){
 				$this->player->sendDataPacket($next);
 				
-				$this->lastPacketSendTime = time();
+				$this->lastPacketSendTime = microtime(true);
 			}
 		}
-	}
-	
-	/**
-	 * @param int $sendInterval
-	 */
-	public function setSendInterval(int $sendInterval) : void{
-		$this->sendInterval = $sendInterval;
 	}
 }
