@@ -1,0 +1,6 @@
+# You can change these values if you encountered with a issue
+# Bytes per resource pack chunk (524288 = 0.5MB)
+rp-chunk-size: 524288
+# Resource pack chunk send interval (as ticks)
+# 30 looks good for this
+rp-chunk-send-interval: 30
