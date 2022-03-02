@@ -1,6 +1,6 @@
 name: RPSolution
 main: emretr1\rpsolution\Main
 version: 1.0
-api: 3.11.4
+api: 4.0.0
 author: EmreTr1
 description: A temporary solution for a client bug about loading large MB resource packs in PocketMine-MP

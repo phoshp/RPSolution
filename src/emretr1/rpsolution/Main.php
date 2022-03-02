@@ -15,6 +15,7 @@ use pocketmine\plugin\PluginBase;
 use pocketmine\event\Listener;
 use pocketmine\resourcepacks\ResourcePack;
 use pocketmine\scheduler\ClosureTask;
+use pocketmine\network\mcpe\NetworkSession;
 
 class Main extends PluginBase implements Listener {
 	/** @var PackSendEntry[] */
@@ -22,7 +23,8 @@ class Main extends PluginBase implements Listener {
 
 	protected function onEnable(): void {
 		$this->getServer()->getPluginManager()->registerEvents($this, $this);
-		$this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function (int $currentTick): void {
+		$this->saveDefaultConfig();
+		$this->getScheduler()->scheduleRepeatingTask(new ClosureTask(function (): void {
 			foreach (self::$packSendQueue as $entry) {
 				$entry->tick($currentTick);
 			}
@@ -38,15 +40,18 @@ class Main extends PluginBase implements Listener {
 	}
 
 	public function onPacketReceive(DataPacketReceiveEvent $event) {
-		$player = $event->getPlayer();
+		$origin = $event->getOrigin();
+		$player = $origin->getPlayer();
 		$packet = $event->getPacket();
+		if(!$player instanceof Player) return;
 		if ($packet instanceof ResourcePackClientResponsePacket) {
 			if ($packet->status === ResourcePackClientResponsePacket::STATUS_SEND_PACKS) {
-				$event->setCancelled(true);
+				$event->cancel();
 
 				$manager = $this->getServer()->getResourcePackManager();
 
-				self::$packSendQueue[$player->getName()] = $entry = new PackSendEntry($player);
+				$playerName = $player?->getName() ?? "Null";
+				self::$packSendQueue[$playerName] = $entry = new PackSendEntry($player);
 				$entry->setSendInterval($this->getRpChunkSendInterval());
 
 				foreach ($packet->packIds as $uuid) {
@@ -59,7 +64,7 @@ class Main extends PluginBase implements Listener {
 					$pack = $manager->getPackById($uuid);
 					if (!($pack instanceof ResourcePack)) {
 						//Client requested a resource pack but we don't have it available on the server
-						$player->close("", "disconnectionScreen.resourcePack", true);
+						$player->kick("", "disconnectionScreen.resourcePack", true);
 						$this->getServer()->getLogger()->debug("Got a resource pack request for unknown pack with UUID " . $uuid . ", available packs: " . implode(", ", $manager->getPackIdList()));
 
 						return false;
@@ -71,7 +76,7 @@ class Main extends PluginBase implements Listener {
 					$pk->chunkCount = (int) ceil($pack->getPackSize() / $pk->maxChunkSize);
 					$pk->compressedPackSize = $pack->getPackSize();
 					$pk->sha256 = $pack->getSha256();
-					$player->sendDataPacket($pk);
+					$player->getNetworkSession()->sendDataPacket($pk);
 
 					for ($i = 0; $i < $pk->chunkCount; $i++) {
 						$pk2 = new ResourcePackChunkDataPacket();
@@ -85,7 +90,7 @@ class Main extends PluginBase implements Listener {
 				}
 			}
 		} elseif ($packet instanceof ResourcePackChunkRequestPacket) {
-			$event->setCancelled(true); // dont rely on client
+			$event->cancel(); // dont rely on client
 		}
 	}
 }
@@ -118,7 +123,7 @@ class PackSendEntry {
 
 		if (($tick % $this->sendInterval) === 0) {
 			if ($next = array_shift($this->packets)) {
-				$this->player->sendDataPacket($next);
+				$this->player->getNetworkSession()->sendDataPacket($next);
 			} else {
 				unset(Main::$packSendQueue[$this->player->getName()]);
 			}
